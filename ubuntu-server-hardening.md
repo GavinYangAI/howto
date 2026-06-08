@@ -169,7 +169,35 @@ bind r source-file ~/.tmux.conf \; display "tmux 配置已重载"
 
 ---
 
-## 6. 回滚备忘
+## 6. Node.js 运行环境(自动化工具需要)
+
+> 跑 codex CLI、Claude Code 这类自动化工具要 **Node 18+**,实测建议直接上 **22 LTS**。
+> Ubuntu 24.04 用 apt 装到的是 Node 18,偏旧,所以装好系统后先查一下版本。
+
+先查当前版本:
+```bash
+node -v 2>/dev/null || echo "未安装 node"
+```
+
+若**没装**或**版本低于 22**,用 NodeSource 装 22 LTS:
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+node -v && npm -v        # 确认 v22.x
+```
+
+> **为什么用 NodeSource 而不是 nvm?**
+> nvm 装在 `~/.nvm`,靠 `~/.bashrc` 注入 PATH —— 而第 5 节我们特意让非交互 shell 不被打扰。
+> 结果就是 `ssh host '命令'`、cron 这类**非交互场景默认找不到 nvm 的 node**,无人值守的自动化会挂。
+> NodeSource 装的是系统级二进制(`/usr/bin/node`),任何上下文(交互 / 非交互 / cron)都能直接调,更适合自动化服务器。
+> 真要在同机切多个 Node 版本再考虑 nvm,但那时需自己解决非交互 shell 的 PATH 问题。
+
+> 装完全局 npm 包(如 `npm i -g @anthropic-ai/claude-code`)走的就是这套系统 Node,
+> 二进制落在 `/usr/bin` / `/usr/lib/node_modules`,cron 和非交互 SSH 都能直接用。
+
+---
+
+## 7. 回滚备忘
 
 所有改动都在独立文件,删掉即恢复默认:
 
@@ -180,12 +208,13 @@ bind r source-file ~/.tmux.conf \; display "tmux 配置已重载"
 | 防火墙 | `ufw disable` |
 | 自动进 tmux | 删 `~/.bashrc` 末尾的 tmux 代码块 |
 | tmux 配置 | `rm ~/.tmux.conf` |
+| Node.js (NodeSource) | `sudo apt-get remove -y nodejs && sudo rm /etc/apt/sources.list.d/nodesource.list` |
 
 > 改 SSH 配置后务必 `sshd -t` 校验语法,再 `systemctl reload ssh`(reload 不断现有连接),并**另开新连接确认能登录**后再关旧连接,避免锁死。
 
 ---
 
-## 7. 自动化任务的凭据建议
+## 8. 自动化任务的凭据建议
 
 给服务器配 GitHub 等凭据时:
 - 用**细粒度 PAT 或 deploy key,仅授权目标仓库**,不要用账号全权 token。
